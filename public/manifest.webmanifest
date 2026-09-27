@@ -1,0 +1,16 @@
+{
+  "name": "WIND-UP WINGS!",
+  "short_name": "Wind-Up Wings",
+  "description": "ゼンマイ3人組の 大空大作戦！",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "portrait",
+  "background_color": "#16202F",
+  "theme_color": "#16202F",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

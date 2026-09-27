@@ -5,3 +5,4 @@ scripts/.body.html
 ios/App/Pods
 android/.gradle
 android/app/build
+scripts/.icon-preview

@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="wuwFrame">#16202F</color>
+    <color name="wuwSky">#7DBBE3</color>
     <color name="colorPrimary">#16202F</color>
     <color name="colorPrimaryDark">#16202F</color>
     <color name="colorAccent">#EDB43C</color>

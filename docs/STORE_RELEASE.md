@@ -62,8 +62,10 @@ Xcode では「Signing & Capabilities」で自分の Team を選んでから実�
    気になる場合は `ios/App/App/Info.plist` の `CFBundleDisplayName` を短くする（例：`Wind-Up Wings`）。
 4. **プライバシーポリシーの URL**：データを一切集めていなくても App Store では URL が必須。
    「個人データを収集しません」という1ページで足りる。App Store Connect の「App のプライバシー」は「データの収集なし」。
-5. **アイコンとスプラッシュ画像**：`resources/icon.png`（1024×1024）を用意すれば、
-   `npx @capacitor/assets generate` で全サイズを作れる（このツールの導入は未実施）。
+5. **アイコンとスプラッシュ画像**：作成済み（2026-09-27）。ゲーム内と同じ描画コードのボルトを、サンバーストの青空に置いた絵。
+   `node scripts/make-icons.mjs` で iOS（1024・透明なし）、Android（旧形式・丸・アダプティブ前景/背景、全密度）、
+   起動画面（iOS・Android 全サイズ）、Web（ファビコン・ホーム画面追加・マニフェスト）をまとめて作り直せる。
+   絵を変えたいときはこのスクリプトの中を直す。`--preview` で見本だけ `scripts/.icon-preview/` に出る。
 
 ## ストア用スクリーンショット
 
