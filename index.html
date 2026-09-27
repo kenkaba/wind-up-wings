@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#16202F">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>WIND-UP WINGS!</title>
+</head>
+<body>
+<div id="app"><div id="stage">
+  <canvas id="c"></canvas>
+
+  <div id="hud" hidden>
+    <div class="hudTop">
+      <div class="hudL">
+        <div id="hearts"></div>
+        <div id="team"></div>
+        <div class="lvRow"><span class="lvBadge">Lv<b id="lvV">1</b></span><span class="lvTrack"><span id="lvBar"></span></span></div>
+      </div>
+      <div class="hudC"><div id="scoreV" class="outl">0</div><div id="stageV"></div></div>
+      <button id="pauseBtn" aria-label="ひとやすみ" data-i18n-aria="ui.ariaPause"><span></span><span></span></button>
+    </div>
+    <button id="bombBtn" aria-label="ひっさつ" data-i18n-aria="ui.ariaSpecial"><span class="bIn"><img id="spImg" alt=""></span><span id="spName">ギガボルト</span></button>
+  </div>
+
+  <div id="title" class="overlay show">
+    <div>
+      <div class="logoEn toon print" data-w="WIND-UP"></div><div class="logoEn toon print sky" data-w="WINGS!"></div><div class="logoJa outl" data-i18n="ui.logoJa">ワインドアップ・ウィングス</div>
+      <p class="tSub outl" data-i18n="ui.tagline">ゼンマイ3人組の 大空大作戦！</p>
+    </div>
+    <div>
+      <button class="btn big toon" id="startBtn">START!</button>
+      <div><button class="btn toon" id="selBtn" hidden>STAGE SELECT</button></div>
+      <div class="tRow"><button class="btn small" id="howBtn" data-i18n="ui.howBtn">あそびかた</button><button class="btn small sndBtn">おと：オン</button></div>
+      <div class="tRow"><button class="btn small" id="langBtn" data-i18n="ui.langBtn" lang="en">English</button></div>
+      <div class="best outl"><span data-i18n="ui.best">ハイスコア</span><b id="bestV">0</b></div>
+    </div>
+  </div>
+
+  <div id="stSel" class="overlay">
+    <div class="panel selPanel">
+      <h2 class="toon">STAGE SELECT</h2>
+      <p class="selNote" data-i18n="ui.selNote">クリアしたステージの次まで えらべるよ。<br>途中から始めると、強化がいくつか最初からつく。</p>
+      <div class="stGrid" id="stGrid"></div>
+      <div class="pBtns"><button class="btn small" id="selClose" data-i18n="ui.back">もどる</button></div>
+    </div>
+  </div>
+
+  <div id="how" class="overlay">
+    <div class="panel">
+      <h2 data-i18n="ui.howTitle">あそびかた</h2>
+      <ul class="rules">
+        <li>画面のどこでも<b>ゆびをすべらせる</b>とボルトが動く。弾は自動で出る。</li>
+        <li>当たり判定は<b>まんなかの小さな点</b>だけ。</li>
+        <li><b>3人のチーム</b>で戦う。ロボ→キツネ→サメの順に交代し、1人のライフは3。全員やられたらおしまい。</li>
+        <li>敵を撃ったり弾を<b>ギリギリでかわす</b>と、ひっさつゲージがたまる。満タンで右下のボタンを押すと、キャラごとの必殺技が出る。</li>
+        <li><b>歯車</b>を集めるとレベルアップ。3つの強化から1つえらぶ。</li>
+        <li>しばらく進むと<b>大ボス</b>が出る。たおすと次のステージへ。</li>
+      </ul>
+      <div class="pBtns"><button class="btn" id="howClose" data-i18n="ui.gotIt">わかった</button></div>
+    </div>
+  </div>
+
+  <div id="lvUp" class="overlay">
+    <div class="lvTitle toon print">LEVEL UP!</div>
+    <div class="lvSub" data-i18n="ui.pickOne">強化をひとつえらぼう</div>
+    <div id="cards"></div>
+    <div id="owned"></div>
+  </div>
+
+  <div id="pauseO" class="overlay">
+    <div class="panel">
+      <h2 class="toon">PAUSE</h2>
+      <div class="pBtns">
+        <button class="btn" id="resumeBtn" data-i18n="ui.resume">つづける</button>
+        <button class="btn small sndBtn">おと：オン</button>
+        <button class="btn small fxBtn">ゆれ・光：ふつう</button>
+        <button class="btn small" id="quitBtn" data-i18n="ui.toTitle">タイトルへもどる</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="result" class="overlay">
+    <div class="panel">
+      <h2 class="toon" id="rTitle">GAME OVER</h2><p class="rSub" id="rSubT" data-i18n="ui.overSub">ゼンマイが きれた…</p>
+      <span id="rNew" hidden data-i18n="ui.newBest">ハイスコア更新！</span>
+      <dl class="stats">
+        <dt data-i18n="ui.rScore">スコア</dt><dd class="big" id="rScore">0</dd>
+        <dt data-i18n="ui.rBest">ハイスコア</dt><dd id="rBest">0</dd>
+        <dt data-i18n="ui.rStage">とどいたステージ</dt><dd id="rStage">1</dd>
+        <dt data-i18n="ui.rLv">レベル</dt><dd id="rLv">1</dd>
+        <dt data-i18n="ui.rKills">たおした敵</dt><dd id="rKills">0</dd>
+        <dt data-i18n="ui.rTime">とんだ時間</dt><dd id="rTime">0:00</dd>
+      </dl>
+      <div class="pBtns">
+        <button class="btn toon" id="contBtn" hidden>CONTINUE</button>
+        <button class="btn big toon" id="retryBtn">RETRY!</button>
+        <button class="btn small" id="titleBtn" data-i18n="ui.toTitle">タイトルへもどる</button>
+      </div>
+    </div>
+  </div>
+</div></div>
+
+<script type="module" src="/src/main.ts"></script>
+</body>
+</html>
