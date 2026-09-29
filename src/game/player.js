@@ -5,7 +5,7 @@ import { hitHz, popHz } from './bosses.js';
 import { addP, addWind, addXP, bits, clearNear, explode, hitTest, ringFx, shoot, spark } from './bullets-fx.js';
 import { CRE, MUS, TAU, TEAL, TOM, clamp, lerp, rnd } from './core.js';
 import { damage } from './enemies.js';
-import { banner } from './game-state.js';
+import { affinity, banner } from './game-state.js';
 import { BGM, sfx } from './sound.js';
 import { GS } from './state.js';
 import { CH, TEAM, say } from './upgrades.js';
@@ -212,7 +212,10 @@ export function special() {
   GS.P.spK = k;
   GS.shake = 10;
   sfx('bomb');
-  banner(CH[k].sp, '', 1.2, 'sp');
+  const boss = GS.en.find(e => e.type === 'boss' && !e.dead && !e.dying);
+  const af = boss ? affinity(boss, k) : 1;
+  banner(CH[k].sp, af > 1 ? L().ui.affGood : af < 1 ? L().ui.affBad : '', af !== 1 ? 1.6 : 1.2, 'sp');
+  if (af > 1) sfx('ready');
   say('sp', true);
   if (k === 'robo') {
     GS.P.spT = 2.8;
@@ -460,6 +463,10 @@ export function updParts(dt) {
     if (p.k === 'ko') {
       p.vy += 700 * dt;
       p.rot += dt * 9;
+    }
+    if (p.k === 'eko') {
+      p.vy += 620 * dt;
+      p.rot += p.vr * dt;
     }
     if (p.k === 's') {
       p.vx *= .9;

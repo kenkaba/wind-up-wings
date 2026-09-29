@@ -47,6 +47,8 @@ const ja = {
     hudMid: '中ボス戦',
     hudMini: '小ボス戦',
     hudWave: (a: number, b: number) => `ウェーブ ${a}/${b}`,
+    affGood: 'あいしょう◎ よく効く！',
+    affBad: 'あいしょう△ 効きにくい…',
   },
   banner: {
     ready: (n: number, name: string) => `ステージ ${n}　${name}`,
@@ -145,6 +147,8 @@ const en: Shape = {
     hudMid: 'Mid-boss',
     hudMini: 'Mini-boss',
     hudWave: (a, b) => `Wave ${a}/${b}`,
+    affGood: 'Great match! Extra damage!',
+    affBad: 'Bad match… less damage',
   },
   banner: {
     ready: (n, name) => `Stage ${n}: ${name}`,

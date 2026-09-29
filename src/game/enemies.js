@@ -2,13 +2,13 @@
 // scripts/split-legacy.mjs で1ファイル版から機械的に分割。
 import { L } from '../i18n/index.ts';
 import { beam, mine, missile, spawnBoss, updBoss, wallRow } from './bosses.js';
-import { addWind, aimShot, bits, clearAllBullets, explode, hitTest, popText, puff, ring, ringFx, shoot } from './bullets-fx.js';
-import { TAU, TOM, clamp, lerp, pick, rnd } from './core.js';
-import { PCOST, PUNLOCK, ST, WINT_, banner, hpScale, later } from './game-state.js';
+import { addP, addWind, aimShot, bits, clearAllBullets, explode, hitTest, popText, puff, ring, ringFx, shoot, spark } from './bullets-fx.js';
+import { MUS, TAU, TOM, clamp, lerp, pick, rnd } from './core.js';
+import { PCOST, PUNLOCK, ST, WINT_, affinity, banner, hpScale, later, windDiv } from './game-state.js';
 import { hurt } from './player.js';
-import { setSong, sfx } from './sound.js';
+import { killChime, setSong, sfx } from './sound.js';
 import { GS } from './state.js';
-import { MIDNAME, MININAME } from './upgrades.js';
+import { FXK, MIDNAME, MININAME, TEAM } from './upgrades.js';
 
 export let EDEF;
 export function mk(type, x, y, o = {}) {
@@ -170,8 +170,10 @@ export function director(dt) {
 }
 export function damage(e, amt, fromSp) {
   if (e.enter || e.dying || e.dead || e.trans > 0) return;
+  // ボスへの必殺技はキャラとの相性で威力が変わる
+  if (fromSp && e.type === 'boss') amt *= affinity(e, GS.P.spK || TEAM[GS.P.ci]);
   e.hp -= amt;
-  if (!fromSp) addWind(amt * .45);
+  if (!fromSp) addWind(amt * .45 / windDiv());
   e.flash = .05;
   sfx('hit');
   if (e.hp <= 0) kill(e);
@@ -193,6 +195,7 @@ export function kill(e) {
   explode(e.x, e.y, e.r);
   sfx('boom');
   GS.G.kills++;
+  const cm = killFx(e);
   if (e.type === 'mini' || e.type === 'mid') {
     explode(e.x + 14, e.y - 10, e.r * .8);
     explode(e.x - 12, e.y + 8, e.r * .7);
@@ -208,7 +211,7 @@ export function kill(e) {
       for (const b of GS.eb) if ((b.x - e.x) ** 2 + (b.y - e.y) ** 2 < 120 * 120) b.dead = true;
     }
   }
-  const pts = e.pts * GS.G.stage;
+  const pts = Math.round(e.pts * GS.G.stage * cm);
   GS.G.score += pts;
   if (e.r >= 16) popText(e.x, e.y - 10, '+' + pts);
   for (let i = 0; i < e.gear; i++) GS.gears.push({
@@ -239,6 +242,44 @@ export function kill(e) {
     sfx('pop');
   }
   addWind(1);
+}
+// 撃破の手ごたえ：連続撃破（コンボ）、ぶっ飛ぶ敵、まわりの敵弾を消す、軽いヒットストップ。
+// 戻り値はスコア倍率（コンボ1ごとに+2.5%、最大2倍）
+function killFx(e) {
+  const G = GS.G;
+  G.combo = (G.comboT > 0 ? G.combo || 0 : 0) + 1;
+  G.comboT = 1.6;
+  G.comboPop = .18;
+  G.comboBest = Math.max(G.comboBest || 0, G.combo);
+  killChime(G.combo);
+  const big = e.type === 'mini' || e.type === 'mid';
+  if (!big && e.type !== 'gift') {
+    // カートゥーンらしく、回りながら画面の外へ飛んでいく
+    const s = e.x < GS.P.x ? -1 : 1;
+    addP({ k: 'eko', e: { ...e, flash: 0, dead: false }, x: e.x, y: e.y, vx: s * rnd(70, 150), vy: -rnd(170, 250), life: .55, m: .55, rot: 0, vr: s * rnd(9, 14) });
+    if (GS.parts.filter(p => p.k === 'eko').length > 14) GS.parts.splice(GS.parts.findIndex(p => p.k === 'eko'), 1);
+  }
+  // 倒した敵のまわりの敵弾を、歯車色の火花に変えて消す
+  const cr = big ? 0 : e.r * 1.3 + 8;
+  let n = 0;
+  if (cr) for (const b of GS.eb) {
+    if (!b.dead && (b.x - e.x) ** 2 + (b.y - e.y) ** 2 < cr * cr) {
+      b.dead = true;
+      n++;
+      spark(b.x, b.y, 3, MUS, 140);
+    }
+  }
+  if (n) {
+    G.score += 10 * n * G.stage;
+    ringFx(e.x, e.y, cr, '#FFE9A8', .3, 3);
+  }
+  if (e.r >= 16 && !big) {
+    GS.hitstop = Math.max(GS.hitstop, .045 * FXK());
+    GS.shake = Math.max(GS.shake, e.r / 3.5 * FXK());
+    ringFx(e.x, e.y, e.r * 3.2, '#FFFFFF', .28, 6);
+  }
+  if (G.combo % 10 === 0) popText(clamp(e.x, 56, GS.W - 56), e.y - 26, `${G.combo} COMBO!`);
+  return 1 + Math.min(G.combo, 40) * .025;
 }
 export function updMini(e, dt, live) {
   const ent = e.y < e.ty - 2;

@@ -3,7 +3,7 @@
 import { L } from '../i18n/index.ts';
 import { getItem, setItem } from '../platform/storage.ts';
 import { $, clamp, fmt, saveBest } from './core.js';
-import { ST, STAGES, WINT_, banner, need, newGame } from './game-state.js';
+import { ST, STAGES, WINT_, affinity, banner, need, newGame } from './game-state.js';
 import { drag } from './input.js';
 import { BGM, initAudio, setSong, sfx } from './sound.js';
 import { GS } from './state.js';
@@ -48,6 +48,16 @@ export function updHUD() {
     teamEl.innerHTML = TEAM.map((k, i) => `<img src="${PORT[k]}" class="${i < GS.P.ci ? 'ko' : i === GS.P.ci ? 'cur' : ''}" alt="${CH[k].name}">`).join('');
     spImg.src = PORT[TEAM[GS.P.ci]];
     spName.textContent = CH[TEAM[GS.P.ci]].sp;
+  }
+  // ボス戦中は、いまのキャラの必殺技とボスの相性を必殺ボタンに出す
+  const boss = GS.en.find(e => e.type === 'boss' && !e.dead && !e.dying);
+  const af = boss ? affinity(boss, TEAM[GS.P.ci]) : 1;
+  if (hc.af !== af) {
+    hc.af = af;
+    const el = $('#spAff');
+    el.hidden = af === 1;
+    el.textContent = af > 1 ? '◎' : '△';
+    el.className = af > 1 ? 'good' : 'bad';
   }
   const sk = GS.G.stage + '/' + GS.G.wv + '/' + (GS.G.bossPhase ? 1 : 0) + '/' + (GS.en.some(e => (e.type === 'mid' || e.type === 'mini') && !e.dead) ? 1 : 0);
   if (hc.st !== sk) {

@@ -15,6 +15,22 @@ export let WINT_;
 export function power() {
   return (1 + GS.U.shot * .55) * (1 + .2 * GS.U.rate) * (1 + .25 * GS.U.dmg) * (1 + GS.U.pods * .12 + GS.U.homing * .1 + GS.U.orbit * .05);
 }
+// ひっさつゲージのたまり方：与えたダメージを「自機の強さ」で割り戻す。
+// 強化するほど弾のダメージが上がり、ゲージが際限なく速くたまって終盤が必殺技の連続になっていたため。
+// 0.75乗なので、強くなった分の手ごたえ（少しだけ速くたまる）は残る。
+export function windDiv() {
+  return Math.pow(power(), .75);
+}
+// ボスと必殺技の相性（1より大きい＝よく効く、小さい＝効きにくい）。ゼンマイ大王は相性なし
+export const AFFINITY = {
+  clock: { robo: 1.5, fox: .6, shark: 1 },   // 縦長の塔はギガボルトが全身を貫く／金属の歯車に狐火は効きにくい
+  jack: { robo: .6, fox: 1, shark: 1.5 },    // 跳ねる箱はビームからはみ出す／大波は箱ごと押し流す
+  whale: { robo: 1.5, fox: 1, shark: .6 },   // 水のクジラに電気はよく効く／水に波は効きにくい
+  octo: { robo: .6, fox: 1.5, shark: 1 },    // 狐火でタコ焼き／くねる腕がビームをよける
+};
+export function affinity(boss, k) {
+  return (AFFINITY[boss.kind] || {})[k] || 1;
+}
 export function hpScale() {
   return (1 + .33 * (GS.G.stage - 1)) * Math.pow(power(), .7) * (ST().hpMul || 1);
 }

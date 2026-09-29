@@ -23,6 +23,8 @@ export function updatePlay(dt) {
   }
   GS.P.hurtT = Math.max(0, (GS.P.hurtT || 0) - dt);
   GS.P.mf = Math.max(0, (GS.P.mf || 0) - dt);
+  GS.G.comboT = Math.max(0, (GS.G.comboT || 0) - dt);
+  GS.G.comboPop = Math.max(0, (GS.G.comboPop || 0) - dt);
   if (GS.G.wv === 1 && GS.G.wvT > 0 && !GS.G.saidStart && GS.G.wvDur - GS.G.wvT > .8 && !(GS.G.tut > 0)) {
     GS.G.saidStart = true;
     say('start', true);

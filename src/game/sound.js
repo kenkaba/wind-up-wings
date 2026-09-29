@@ -316,6 +316,16 @@ export function bgmTick() {
     BGM.step++;
   }
 }
+// 撃破の音：コンボが続くほど音が上がっていく（2オクターブで頭打ち）
+export function killChime(n) {
+  if (!GS.AC || !GS.sndOn) return;
+  const now = GS.AC.currentTime;
+  if (sfxLast.kill && now - sfxLast.kill < .03) return;
+  sfxLast.kill = now;
+  const m = 72 + [0, 2, 4, 7, 9, 12, 14, 16, 19, 21, 24][Math.min(10, Math.floor((n - 1) / 2))];
+  tone(mf(m), .09, { type: 'square', vol: .03 });
+  tone(mf(m + 7), .12, { type: 'triangle', vol: .04, at: now + .035 });
+}
 export function setSnd(v) {
   GS.sndOn = v;
   try {

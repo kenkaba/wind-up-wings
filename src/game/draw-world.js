@@ -203,6 +203,19 @@ export function subText(txt, x, y, size = 13) {
   GS.ctx.fillStyle = CRE;
   GS.ctx.fillText(txt, x, y);
 }
+// 連続撃破の表示（右上、ポーズボタンの下）。切れかけると薄くなる
+export function drawCombo() {
+  const G = GS.G, a = Math.min(1, G.comboT / .5), pop = 1 + (G.comboPop || 0) * 1.6;
+  GS.ctx.save();
+  GS.ctx.globalAlpha = a;
+  GS.ctx.translate(GS.W - 52, 118);
+  GS.ctx.rotate(-.06);
+  GS.ctx.scale(pop, pop);
+  const hot = G.combo >= 20;
+  toonText(String(G.combo), 0, 0, G.combo >= 10 ? 28 : 24, GS.tNow, hot ? '#FFD0C0' : '#FFE27A', hot ? '#D8432F' : '#F29A2E');
+  subText('COMBO', 0, 20, 11);
+  GS.ctx.restore();
+}
 export function drawSay() {
   const sy = GS.G.say,
     a = clamp(Math.min(sy.t * 6, (sy.d - sy.t) * 4), 0, 1),
@@ -365,6 +378,7 @@ export function drawBanner() {
     GS.ctx.rotate(-.05);
     GS.ctx.scale(sc * 1.1, sc * 1.1);
     printText(b.text, 0, 0, 32, '#FFF6DA', CH[TEAM[GS.P.ci]].col);
+    if (b.sub) subText(b.sub, 0, 34, 14);
   } else {
     GS.ctx.translate(GS.W / 2, GS.H * .36);
     GS.ctx.scale(sc, sc);
@@ -569,6 +583,22 @@ export function drawWorld() {
       circ(p.x, p.y, R_ * .45);
       GS.ctx.fillStyle = '#FFF6DA';
       GS.ctx.fill();
+    } else if (p.k === 'eko') {
+      // 倒した敵が回りながら飛んでいく（最初の一瞬は白く光る）
+      GS.ctx.globalAlpha = Math.min(1, a * 2.5);
+      GS.ctx.save();
+      GS.ctx.translate(p.x, p.y);
+      GS.ctx.rotate(p.rot);
+      const s = .55 + .45 * a;
+      GS.ctx.scale(s, s);
+      GS.ctx.translate(-p.e.x, -p.e.y);
+      p.e.flash = a > .82 ? 1 : 0;
+      drawEnemy(p.e);
+      GS.ctx.restore();
+      if (a > .35) for (let i = 0; i < 3; i++) {
+        const an = GS.tNow * 9 + i * TAU / 3;
+        star(p.x + Math.cos(an) * 16, p.y - 14 + Math.sin(an) * 5, 3.6, MUS);
+      }
     } else if (p.k === 'ko') {
       GS.ctx.globalAlpha = 1;
       drawChar(p.kind, p.x, p.y, GS.tNow, p.rot, 1);
@@ -682,6 +712,7 @@ export function drawWorld() {
     GS.ctx.fillStyle = g;
     GS.ctx.fillRect(0, 0, GS.W, GS.H);
   }
+  if ((GS.G.combo || 0) >= 3 && GS.G.comboT > 0 && !GS.G.over) drawCombo();
   if (GS.G.say && !GS.G.over && GS.P.swap <= 0) drawSay();
   if (GS.G.tut > 0 && GS.state === 'play') drawTut();
   if (GS.G.banner) drawBanner();

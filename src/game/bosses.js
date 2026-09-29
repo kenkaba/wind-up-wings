@@ -19,7 +19,8 @@ export function spawnBoss() {
   const S = ST(),
     kind = S.boss[GS.G.bi || 0],
     D = BOSSDEF[kind];
-  const hp = 420 * (1 + .33 * (GS.G.stage - 1)) * Math.pow(power(), .55) * (S.bossHp || 1);
+  // 2面以降は、必殺技の連発で削っていた分を体力で差し引く（ゲージ補正を入れたときに戦闘時間を元の長さへ戻した）
+  const hp = 420 * (1 + .33 * (GS.G.stage - 1)) * Math.pow(power(), .55) * (S.bossHp || 1) * (GS.G.stage > 1 ? .82 : 1);
   const b = {
     id: ++GS.eid,
     type: 'boss',
@@ -250,7 +251,11 @@ export function updBoss(b, dt) {
   if (free) {
     if (b.spc) {
       b.spc.t += dt;
-      if (BSP[b.kind](b, b.spc, dt)) b.spc = null;
+      // 次の超必殺は、今の超必殺が終わってから数える（終盤に超必殺が切れ目なく続かないように）
+      if (BSP[b.kind](b, b.spc, dt)) {
+        b.spc = null;
+        b.spT = b.ph === 3 ? 9 : 13;
+      }
     } else {
       b.midT -= dt * b.agg;
       if (b.midT <= 0) {

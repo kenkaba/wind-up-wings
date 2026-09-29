@@ -35,7 +35,7 @@ const snapshot = (useS) => {
     state: V.state,
     G: [V.G.score, V.G.stage, V.G.lv, r(V.G.xp), r(V.G.wind), V.G.kills, V.G.wv, r(V.G.time), V.G.bossPhase, V.G.over],
     P: [r(V.P.x), r(V.P.y), V.P.hp, V.P.maxHp, V.P.ci],
-    U: V.U,
+    U: { ...V.U },
     en: V.en.map((e) => [e.type, r(e.x), r(e.y), r(e.hp)]),
     eb: V.eb.length, pb: V.pb.length, gears: V.gears.length,
   };
