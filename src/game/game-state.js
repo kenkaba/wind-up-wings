@@ -18,6 +18,19 @@ export function power() {
 // ひっさつゲージのたまり方：与えたダメージを「自機の強さ」で割り戻す。
 // 強化するほど弾のダメージが上がり、ゲージが際限なく速くたまって終盤が必殺技の連続になっていたため。
 // 0.75乗なので、強くなった分の手ごたえ（少しだけ速くたまる）は残る。
+// 成長と難易度の調整値（scripts/balance-sim.mjs から差し替えて試せるよう1か所にまとめる）
+//   needA/needB/needC … レベルアップに要る歯車 = needA + (Lv-1) × needB + (Lv-1)² × needC
+//   hpStage/hpPow … ザコ・小中ボスの体力 = (1 + hpStage×(面-1)) × 自機の強さ^hpPow
+//   bsStage/bsMax … 敵弾の速さ = min(bsMax, 1 + bsStage×(面-1))
+//   eliteStage/eliteMax … 2面から、ザコがエリート（金の王冠）になる確率 = min(eliteMax, eliteStage×(面-1))
+//   densStage/densPow … 敵の数の倍率 = (1 + densStage×(面-1)) × 自機の強さ^densPow（出現の間隔も同じだけ詰める）
+// 2026-09-29：レベルアップを速め（序盤は約16秒ごと）、ザコの体力の伸びを抑えて、代わりに敵の数とエリートで手ごたえを出す。
+// 元の値は needA 6 / needB 5 / needC 0 / hpStage .33 / hpPow .7 / dens 0 / elite 0。
+// 敵弾の速さ（bs）はボスの弾幕にも効くので元のまま（上げると5面・9面のボスが壁になった）。
+export const TUNE = { needA: 3, needB: 1.6, needC: .06, hpStage: .3, hpPow: .45, densStage: .35, densPow: .65, bsStage: .1, bsMax: 1.6, eliteStage: .08, eliteMax: .5 };
+export function density() {
+  return (1 + TUNE.densStage * (GS.G.stage - 1)) * Math.pow(power(), TUNE.densPow);
+}
 export function windDiv() {
   return Math.pow(power(), .75);
 }
@@ -32,7 +45,7 @@ export function affinity(boss, k) {
   return (AFFINITY[boss.kind] || {})[k] || 1;
 }
 export function hpScale() {
-  return (1 + .33 * (GS.G.stage - 1)) * Math.pow(power(), .7) * (ST().hpMul || 1);
+  return (1 + TUNE.hpStage * (GS.G.stage - 1)) * Math.pow(power(), TUNE.hpPow) * (ST().hpMul || 1);
 }
 export let SKIES;
 export let BS;
@@ -324,6 +337,6 @@ export function __init_game_state() {
   ST = () => STAGES[Math.min(GS.G.stage, STAGES.length) - 1];
   WINT_ = () => WINTS[ST().type];
   SKIES = [['#4B9FDB', '#BDE6F2'], ['#5B4A8A', '#F0A25A'], ['#2E5C8A', '#8FC7C0'], ['#1A2440', '#5B4A7A'], ['#262C3A', '#5E6B7C'], ['#2B3A6E', '#9C9CD6'], ['#3A1428', '#9A3A3A'], ['#241238', '#C9884A']];
-  BS = () => Math.min(1.6, 1 + .1 * (GS.G.stage - 1));
-  need = () => 6 + (GS.G.lv - 1) * 5;
+  BS = () => Math.min(TUNE.bsMax, 1 + TUNE.bsStage * (GS.G.stage - 1));
+  need = () => Math.round(TUNE.needA + (GS.G.lv - 1) * TUNE.needB + (GS.G.lv - 1) ** 2 * TUNE.needC);
 }

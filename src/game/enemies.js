@@ -4,7 +4,7 @@ import { L } from '../i18n/index.ts';
 import { beam, mine, missile, spawnBoss, updBoss, wallRow } from './bosses.js';
 import { addP, addWind, aimShot, bits, clearAllBullets, explode, hitTest, popText, puff, ring, ringFx, shoot, spark } from './bullets-fx.js';
 import { MUS, TAU, TOM, clamp, lerp, pick, rnd } from './core.js';
-import { PCOST, PUNLOCK, ST, WINT_, affinity, banner, hpScale, later, windDiv } from './game-state.js';
+import { PCOST, PUNLOCK, ST, TUNE, WINT_, affinity, banner, density, hpScale, later, windDiv } from './game-state.js';
 import { hurt } from './player.js';
 import { killChime, setSong, sfx } from './sound.js';
 import { GS } from './state.js';
@@ -26,10 +26,19 @@ export function mk(type, x, y, o = {}) {
     ...o
   };
   e.hp *= hpScale();
+  // エリート：体力は少し多いだけ。自分から狙い撃ちし、倒すと遅れて弾の輪をばらまく（倒す位置に意味が出る）
+  if (ELITE_OK.includes(type) && GS.G.stage > 1 && Math.random() < Math.min(TUNE.eliteMax, TUNE.eliteStage * (GS.G.stage - 1))) {
+    e.elite = true;
+    e.hp *= 1.5;
+    e.pts *= 2;
+    e.gear += 1;
+    e.eT = rnd(.9, 1.6);
+  }
   e.mhp = e.hp;
   GS.en.push(e);
   return e;
 }
+const ELITE_OK = ['bird', 'plane', 'top', 'fish', 'soldier', 'yoyo', 'egg', 'jack', 'car'];
 export function birdAt(x, y, o = {}) {
   return mk('bird', x, y, {
     x0: x,
@@ -49,7 +58,8 @@ export function startWave() {
   const heat = 1 + Math.min(.3, (GS.G.calm || 0) / 200);
   const S = ST(),
     WI = WINT_();
-  let budget = (6 + 3.6 * (st - 1)) * WI[w - 1] * relief * heat;
+  const D = density();
+  let budget = (6 + 3.6 * (st - 1)) * WI[w - 1] * relief * heat * D;
   if (S.mid && S.mid.w === w) {
     budget = 0;
     GS.G.fillT = 99;
@@ -110,7 +120,7 @@ export function startWave() {
     first = false;
     budget -= PCOST[k];
     later(t, PATTERNS[k]);
-    t += rnd(1.3, 2.2) / Math.min(1.6, 1 + .1 * (st - 1));
+    t += rnd(1.3, 2.2) / Math.min(1.6, 1 + .1 * (st - 1)) / D;
   }
   if (w === WI.length && S.type !== 'rest') {
     later(t, () => {
@@ -214,7 +224,10 @@ export function kill(e) {
   const pts = Math.round(e.pts * GS.G.stage * cm);
   GS.G.score += pts;
   if (e.r >= 16) popText(e.x, e.y - 10, '+' + pts);
-  for (let i = 0; i < e.gear; i++) GS.gears.push({
+  // 敵の数を増やした分だけ1体あたりの歯車を減らす（数を増やしてもレベルの上がり方は変わらないように）
+  const gq = e.gear / density();
+  const gn = Math.floor(gq) + (Math.random() < gq % 1 ? 1 : 0);
+  for (let i = 0; i < gn; i++) GS.gears.push({
     x: e.x,
     y: e.y,
     vx: rnd(-70, 70),
@@ -277,6 +290,11 @@ function killFx(e) {
     GS.hitstop = Math.max(GS.hitstop, .045 * FXK());
     GS.shake = Math.max(GS.shake, e.r / 3.5 * FXK());
     ringFx(e.x, e.y, e.r * 3.2, '#FFFFFF', .28, 6);
+  }
+  if (e.elite) {
+    const x = e.x, y = e.y;
+    ringFx(x, y, 34, MUS, .45, 4);
+    later(.3, () => { if (!GS.G.over) ring(x, y, 8, 85, rnd(0, 1), 't'); });
   }
   if (G.combo % 10 === 0) popText(clamp(e.x, 56, GS.W - 56), e.y - 26, `${G.combo} COMBO!`);
   return 1 + Math.min(G.combo, 40) * .025;
@@ -654,6 +672,13 @@ export function updEnemies(dt) {
       case 'boss':
         updBoss(e, dt);
         break;
+    }
+    if (e.elite && live && !e.dead && e.y > 30 && e.y < GS.H * .6) {
+      e.eT -= dt;
+      if (e.eT <= 0) {
+        e.eT = rnd(1.7, 2.4);
+        aimShot(e.x, e.y + 6, 3, .2, 125, 't');
+      }
     }
     if (!GS.G.over && !e.dead && !e.dying && !e.enter && hitTest(e, GS.P.x, GS.P.y, e.hb ? -4 : -e.r * .2 + 4)) hurt();
   }

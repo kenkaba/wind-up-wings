@@ -1,5 +1,5 @@
 // 難易度の検証：弾をよける自動ボットでプレイし、ボス戦ごとの数字を出す。
-//   node scripts/balance-sim.mjs [シード数] [inv|-] [開始ステージ] [反応(0〜1、小さいほど下手)]
+//   node scripts/balance-sim.mjs [シード数] [inv|-] [開始ステージ] [反応(0〜1、小さいほど下手)] [TUNEの上書きJSON]
 // 出力：ボスごとの戦闘時間・必殺技の回数・必殺技で削った割合・被弾数、到達ステージ。
 // inv を付けると無敵で最後まで進める（終盤のボス戦の数字を必ず取るため）。
 import { createServer } from 'vite';
@@ -11,6 +11,7 @@ const SEEDS = +(process.argv[2] || 3);
 const INV = process.argv[3] === 'inv';
 const START = +(process.argv[4] || 1);
 const SKILL = +(process.argv[5] || .8);
+const TUNE = process.argv[6] ? JSON.parse(process.argv[6]) : null; // 例 '{"needA":4}'
 const MAXF = 60 * 60 * 30; // 30分で打ち切り
 const CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 
@@ -32,7 +33,7 @@ function botInPage(INV, SKILL, MAXF) {
   for (const k of ['fill', 'stroke', 'fillRect', 'strokeRect', 'clearRect', 'drawImage', 'fillText', 'strokeText', 'arc', 'ellipse', 'lineTo', 'moveTo', 'beginPath', 'closePath', 'quadraticCurveTo', 'bezierCurveTo', 'arcTo', 'rect', 'clip', 'save', 'restore', 'translate', 'rotate', 'scale', 'setTransform', 'resetTransform', 'setLineDash'])
     CanvasRenderingContext2D.prototype[k] = () => {};
   let brng = 987654321; const br = () => { brng = (brng * 1103515245 + 12345) & 0x7fffffff; return brng / 0x7fffffff; };
-  const R = window.__run = { doneIds: new Set(), f: 0, done: false, fights: [], cur: null, hurts: 0, stageReached: 1, spPending: 0, lastHp: null, lastCi: 0 };
+  const R = window.__run = { lvT: [], seen: new Map(), life: [], killsT: 0, playT: 0, lastLv: 1, stLv: {}, doneIds: new Set(), f: 0, done: false, fights: [], cur: null, hurts: 0, stageReached: 1, spPending: 0, lastHp: null, lastCi: 0 };
   const segDist = (px, py, h) => {
     const dx = Math.cos(h.ang), dy = Math.sin(h.ang), t = Math.max(0, Math.min(h.len || 1000, (px - h.x) * dx + (py - h.y) * dy));
     return Math.hypot(px - (h.x + dx * t), py - (h.y + dy * t));
@@ -65,10 +66,23 @@ function botInPage(INV, SKILL, MAXF) {
       window.__step();
       const s = GS.state, G = GS.G, P = GS.P;
       if (s === 'levelup') { const c = document.querySelector('#cards').children; c[Math.floor(br() * c.length)].click(); continue; }
-      if (s === 'over' || R.f > MAXF) { R.done = true; break; }
+      if (s === 'over' || R.f > MAXF) { R.done = true; R.where = G && G.bossPhase ? 'ボス' : (GS.en.some(e => (e.type === 'mini' || e.type === 'mid') && !e.dead) ? '小中ボス' : `W${G ? G.wv : 0}`); break; }
       if (s !== 'play' || !G || !P) continue;
       if (G.allClear) { R.done = true; R.cleared = true; break; }
       R.stageReached = Math.max(R.stageReached, G.stage);
+      R.playT += 1 / 60;
+      if (G.lv > R.lastLv) { for (let l = R.lastLv; l < G.lv; l++) R.lvT.push(+R.playT.toFixed(1)); R.lastLv = G.lv; }
+      R.stLv[G.stage] = G.lv;
+      // ザコ敵が出てから倒されるまでの時間（画面に入ってから）
+      for (const e of GS.en) {
+        if (['boss', 'mini', 'mid', 'gift'].includes(e.type)) continue;
+        if (!R.seen.has(e.id) && e.y > 0 && e.x > 0 && e.x < GS.W) R.seen.set(e.id, R.playT);
+      }
+      for (const [id, t0] of R.seen) {
+        const e = GS.en.find(q => q.id === id);
+        if (!e) { R.seen.delete(id); continue; }
+        if (e.dead) { if (!e.__c) { e.__c = 1; R.life.push(R.playT - t0); R.killsT++; } R.seen.delete(id); }
+      }
       hist.push(GS.eb.filter(b => !b.dead).map(b => ({ x: b.x, y: b.y, vx: b.vx, vy: b.vy, r: b.r })));
       if (hist.length > 12) hist.shift();
       // 被弾カウント
@@ -122,6 +136,7 @@ try {
     const errs = []; page.on('pageerror', e => errs.push(String(e)));
     await page.evaluateOnNewDocument(harness, 1000 + k * 7919, START);
     await page.goto(`http://localhost:${PORT}/`, { waitUntil: 'load' });
+    if (TUNE) await page.evaluate(async (t) => { const m = await import('/src/game/game-state.js'); Object.assign(m.TUNE, t); }, TUNE);
     await page.evaluate((start) => {
       window.__step();
       if (start > 1) { document.querySelector('#selBtn').click(); document.querySelector(`.stc[data-st="${start}"]`).click(); }
@@ -129,7 +144,7 @@ try {
     }, START);
     await page.evaluate(botInPage, INV, SKILL, MAXF);
     while (!(await page.evaluate(() => window.__run.chunk(3000))));
-    const r = await page.evaluate(() => ({ fights: window.__run.fights, hurts: window.__run.hurts, stage: window.__run.stageReached, cleared: !!window.__run.cleared, f: window.__run.f, lv: window.__WUW__.G.lv }));
+    const r = await page.evaluate(() => ({ where: window.__run.where, lvT: window.__run.lvT, life: window.__run.life, stLv: window.__run.stLv, playT: window.__run.playT, killsT: window.__run.killsT, fights: window.__run.fights, hurts: window.__run.hurts, stage: window.__run.stageReached, cleared: !!window.__run.cleared, f: window.__run.f, lv: window.__WUW__.G.lv }));
     r.errs = errs.slice(0, 2); r.seed = k;
     results.push(r);
     await page.close();
@@ -140,6 +155,20 @@ results.sort((a, b) => a.seed - b.seed);
 for (const r of results) {
   console.log(`seed${r.seed}: 到達ステージ${r.stage}${r.cleared ? '（全クリア）' : ''} 被弾${r.hurts} Lv${r.lv} ${(r.f / 3600).toFixed(1)}分 ${r.errs.length ? 'ERR ' + r.errs : ''}`);
 }
+// 到達ステージ（全クリアは11として数える）と被弾のペース
+const avg0 = (a) => a.reduce((x, y) => x + y, 0) / a.length;
+const reach = results.map(r => r.cleared ? 11 : r.stage).sort((a, b) => a - b);
+console.log('倒れた場所 ' + results.filter(r => !r.cleared && r.f < 60 * 60 * 30).map(r => `${r.stage}面${r.where}`).join(' '));
+console.log(`到達ステージ ${reach.join(',')}（平均${avg0(reach).toFixed(1)}、中央${reach[reach.length >> 1]}）、被弾 ${avg0(results.map(r => r.hurts / (r.f / 3600))).toFixed(2)}回/分`);
+// レベルアップの間隔とザコの撃破時間
+const avg = (a) => a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0;
+const gaps = results.map(r => r.lvT.map((t, i) => t - (i ? r.lvT[i - 1] : 0)));
+const firstN = (n) => avg(gaps.map(g => g.slice(0, n)).flat());
+console.log(`レベルアップ間隔：最初の5回 ${firstN(5).toFixed(0)}秒、6〜15回目 ${avg(gaps.map(g => g.slice(5, 15)).flat()).toFixed(0)}秒、全体 ${avg(gaps.flat()).toFixed(0)}秒`);
+console.log(`1回目のレベルアップ ${avg(results.map(r => r.lvT[0] || 0)).toFixed(0)}秒`);
+const stl = {}; for (const r of results) for (const [k, v] of Object.entries(r.stLv)) (stl[k] ||= []).push(v);
+console.log('各ステージ終了時のLv：' + Object.keys(stl).map(k => `${k}面${avg(stl[k]).toFixed(1)}`).join(' '));
+console.log(`ザコの撃破までの時間 平均${avg(results.map(r => r.life).flat()).toFixed(2)}秒、撃破数 ${avg(results.map(r => r.killsT / (r.playT / 60))).toFixed(0)}体/分`);
 // ボスごとの平均
 const by = {};
 for (const r of results) for (const f of r.fights) { const k = `${String(f.st).padStart(2)} ${f.kind}`; (by[k] ||= []).push(f); }

@@ -810,6 +810,16 @@ export function drawEnemy(e) {
     return;
   }
   GS.flashOn = e.flash > 0;
+  if (e.elite) {
+    const pr = e.r + 7 + Math.sin(e.t * 6) * 2;
+    GS.ctx.beginPath();
+    GS.ctx.arc(e.x, e.y, pr, 0, Math.PI * 2);
+    GS.ctx.fillStyle = 'rgba(255,214,90,.28)';
+    GS.ctx.fill();
+    GS.ctx.lineWidth = 2.5;
+    GS.ctx.strokeStyle = '#EDB43C';
+    GS.ctx.stroke();
+  }
   GS.ctx.save();
   const sq = Math.sin(e.t * 8 + e.ph) * .06;
   GS.ctx.translate(e.x, e.y);
@@ -862,6 +872,24 @@ export function drawEnemy(e) {
   }
   GS.ctx.restore();
   GS.flashOn = false;
+  if (e.elite) {
+    // 王冠（体力ゲージの左に小さく）
+    const cx = e.x - Math.max(24, Math.min(44, e.r * 2.2)) / 2 - 9, cy = e.y - e.r - (e.type === 'soldier' ? 52 : e.type === 'jack' ? 18 + 30 * (e.pop || 0) : 14) + 2;
+    GS.ctx.beginPath();
+    GS.ctx.moveTo(cx - 6, cy + 4);
+    GS.ctx.lineTo(cx - 6, cy - 3);
+    GS.ctx.lineTo(cx - 3, cy);
+    GS.ctx.lineTo(cx, cy - 5);
+    GS.ctx.lineTo(cx + 3, cy);
+    GS.ctx.lineTo(cx + 6, cy - 3);
+    GS.ctx.lineTo(cx + 6, cy + 4);
+    GS.ctx.closePath();
+    GS.ctx.fillStyle = '#EDB43C';
+    GS.ctx.fill();
+    GS.ctx.lineWidth = 1.6;
+    GS.ctx.strokeStyle = '#2B1D16';
+    GS.ctx.stroke();
+  }
 }
 
 export function __init_draw_enemies() {}
